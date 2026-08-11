@@ -13,6 +13,16 @@ if [[ "$(uname -s)" != "Linux" ]]; then
 	nura::die "this script must run on the Linux VPS, not on Windows or macOS."
 fi
 
+# sudo resets PATH to secure_path, which excludes the conventional Go install
+# location, so `sudo ./00_build.sh` would not find a toolchain that works fine
+# in an interactive shell.
+for go_bin in /usr/local/go/bin "${HOME}/go/bin"; do
+	if [[ -x "$go_bin/go" && ":$PATH:" != *":$go_bin:"* ]]; then
+		PATH="$PATH:$go_bin"
+	fi
+done
+export PATH
+
 nura::require_cmd go make gcc
 
 # The build links go-ethereum's C secp256k1. Without CGO the compile fails on
