@@ -1,0 +1,5 @@
+# These scripts only ever run on the Linux VPS. This repo is edited on Windows
+# with core.autocrlf=true, and a CRLF shebang fails at exec time with the
+# unhelpful "bash\r: No such file or directory".
+*.sh text eol=lf
+*.env.example text eol=lf
