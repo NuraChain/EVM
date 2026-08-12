@@ -40,7 +40,7 @@ echo "Account address:"
 nura::run_as evmd keys show "$VALIDATOR_KEY" --address \
 	--keyring-backend "$KEYRING_BACKEND" --home "$NODE_HOME"
 echo "Node ID:"
-nura::run_as evmd tendermint show-node-id --home "$NODE_HOME"
+nura::run_as evmd comet show-node-id --home "$NODE_HOME"
 
 cat <<EOF
 
