@@ -26,6 +26,10 @@ Wants=network-online.target
 [Service]
 User=$NODE_USER
 Group=$NODE_USER
+# evmd builds a temp app whose upgrade keeper does mkdir("data") relative to the
+# working directory. systemd defaults to /, which ProtectSystem=strict mounts
+# read-only, so without this the node panics before it starts.
+WorkingDirectory=$NODE_HOME
 ExecStart=/usr/local/bin/evmd start --home $NODE_HOME --chain-id $CHAIN_ID --log_level info
 Restart=on-failure
 RestartSec=5

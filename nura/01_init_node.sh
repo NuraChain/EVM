@@ -19,6 +19,8 @@ if [[ ! -d "$NODE_HOME" ]]; then
 	install -d -o "$NODE_USER" -g "$NODE_USER" -m 0750 "$NODE_HOME"
 fi
 
+nura::enter_workdir "$NODE_HOME"
+
 if [[ ! -f "$NODE_HOME/config/genesis.json" ]]; then
 	nura::run_as evmd init "$MONIKER" --chain-id "$CHAIN_ID" --home "$NODE_HOME"
 fi

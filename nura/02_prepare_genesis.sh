@@ -43,6 +43,8 @@ if [[ ! -d "$GENESIS_HOME" ]]; then
 	install -d -o "$NODE_USER" -g "$NODE_USER" -m 0750 "$GENESIS_HOME"
 fi
 
+nura::enter_workdir "$GENESIS_HOME"
+
 nura::run_as evmd init genesis --chain-id "$CHAIN_ID" --home "$GENESIS_HOME" --overwrite
 
 # 18-decimal amounts exceed bash's integer range, so they are built as strings.

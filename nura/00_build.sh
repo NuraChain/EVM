@@ -42,6 +42,11 @@ if ! id -u "$NODE_USER" >/dev/null 2>&1; then
 	echo "Created service user '$NODE_USER'"
 fi
 
-evmd version
+# Run the version check from a scratch directory: evmd creates ./data wherever
+# it is invoked, and leaving that turd in the source checkout is confusing.
+version_dir="$(mktemp -d)"
+( cd "$version_dir" && evmd version )
+rm -rf "$version_dir"
+
 echo
 echo "Installed /usr/local/bin/evmd, service user '$NODE_USER' ready."

@@ -18,6 +18,8 @@ SELF_DELEGATION_BASE="$(nura::to_base_units "$GENTX_SELF_DELEGATION" GENTX_SELF_
 # signed against the wrong chain state and collect-gentxs will reject it.
 [[ -f "$NODE_HOME/config/genesis.json" ]] || nura::die "missing $NODE_HOME/config/genesis.json. Copy the coordinator genesis here first."
 
+nura::enter_workdir "$NODE_HOME"
+
 nura::run_as evmd genesis validate-genesis --home "$NODE_HOME" >/dev/null
 
 # Catches the common mistake of signing a gentx against the stock `evmd init`

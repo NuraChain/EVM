@@ -76,6 +76,17 @@ nura::run_as() {
 	fi
 }
 
+# Every evmd invocation pre-instantiates the app to build its CLI, and that temp
+# app is constructed with empty app options, so its upgrade keeper resolves the
+# home directory to "" and calls mkdir("data") relative to the current working
+# directory. Run evmd from a directory NODE_USER owns, otherwise even
+# `evmd version` panics with `could not create directory "data"`.
+nura::enter_workdir() {
+	local dir="$1"
+	[[ -d "$dir" ]] || nura::die "working directory $dir does not exist."
+	cd "$dir" || nura::die "cannot enter $dir."
+}
+
 nura::require_root() {
 	[[ "$(id -u)" -eq 0 ]] || nura::die "this script must run as root (use sudo)."
 }

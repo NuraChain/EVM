@@ -24,6 +24,9 @@ done
 
 chown -R "$NODE_USER:$NODE_USER" "$GENESIS_HOME/config/gentx" 2>/dev/null || true
 
+# After the copy loop, so relative paths in GENTX_FILES still resolve.
+nura::enter_workdir "$GENESIS_HOME"
+
 nura::run_as evmd genesis collect-gentxs --home "$GENESIS_HOME"
 nura::run_as evmd genesis validate-genesis --home "$GENESIS_HOME"
 
