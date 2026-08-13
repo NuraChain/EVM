@@ -26,9 +26,14 @@ APP_TOML="$NODE_HOME/config/app.toml"
 CONFIG_TOML="$NODE_HOME/config/config.toml"
 GENESIS="$NODE_HOME/config/genesis.json"
 
-for file in "$APP_TOML" "$CONFIG_TOML" "$GENESIS"; do
-	[[ -f "$file" ]] || nura::die "missing $file. Run 01_init_node.sh and copy the final genesis first."
+for file in "$APP_TOML" "$CONFIG_TOML"; do
+	[[ -f "$file" ]] || nura::die "missing $file. Run 01_init_node.sh first."
 done
+
+# Picks up the post-collect-gentxs genesis, which differs from the one this node
+# held while creating its gentx. Running the pre-collect copy is the mismatch
+# the checksum check below exists to catch.
+nura::sync_genesis
 
 if [[ "$EVM_CHAIN_ID" == "262144" ]]; then
 	nura::die "EVM_CHAIN_ID is still cosmos/evm's default of 262144. Claim your own EIP-155 chain ID."

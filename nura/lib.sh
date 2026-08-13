@@ -13,6 +13,10 @@ nura::load_env() {
 	[[ -f "$env_file" ]] || nura::die "missing $env_file. Copy nura.env.example to nura.env and edit it."
 	# shellcheck disable=SC1090
 	source "$env_file"
+	# Exported so nura::set_env_var can write derived values (the genesis
+	# checksum) back into the same file the scripts read.
+	NURA_ENV_FILE="$env_file"
+	export NURA_ENV_FILE
 
 	: "${CHAIN_ID:?Set CHAIN_ID}"
 	: "${DENOM:=anura}"
@@ -94,4 +98,70 @@ nura::require_root() {
 nura::sha256() {
 	nura::require_cmd sha256sum
 	sha256sum "$1" | cut -d' ' -f1
+}
+
+# Rewrites KEY="value" in nura.env, appending it when absent. Used so derived
+# values the operator would otherwise transcribe by hand (the genesis checksum)
+# land in the file the other scripts read. Writes through `cat` so the env
+# file's existing ownership and 0600 permissions survive.
+nura::set_env_var() {
+	local key="$1" value="$2" tmp
+	nura::require_cmd awk
+	[[ -f "${NURA_ENV_FILE:-}" ]] || nura::die "NURA_ENV_FILE is not set; call nura::load_env first."
+	tmp="$(mktemp)"
+	awk -v key="$key" -v value="$value" '
+		BEGIN { done = 0 }
+		!done && $0 ~ "^[[:space:]]*" key "=" {
+			printf "%s=\"%s\"\n", key, value
+			done = 1
+			next
+		}
+		{ print }
+		END { if (!done) printf "%s=\"%s\"\n", key, value }
+	' "$NURA_ENV_FILE" > "$tmp" || { rm -f "$tmp"; nura::die "failed to set $key in $NURA_ENV_FILE"; }
+	cat "$tmp" > "$NURA_ENV_FILE"
+	rm -f "$tmp"
+	echo "Set $key in $NURA_ENV_FILE"
+}
+
+# Installs a genesis file into a node home. The copy is staged and renamed so a
+# node can never read a half-written genesis, and ownership is set before the
+# rename so the service account can always read the result.
+nura::install_genesis() {
+	local src="$1" dst="$2" dst_dir tmp
+	[[ -f "$src" ]] || nura::die "genesis source not found: $src"
+	dst_dir="$(dirname "$dst")"
+	[[ -d "$dst_dir" ]] || nura::die "missing $dst_dir. Run 01_init_node.sh first."
+	# Nothing to do when the coordinator's GENESIS_HOME is the node home itself.
+	if [[ "$src" -ef "$dst" ]]; then
+		return 0
+	fi
+	tmp="$dst.installing.$$"
+	cp "$src" "$tmp"
+	chown "$NODE_USER:$NODE_USER" "$tmp" 2>/dev/null || true
+	chmod 0644 "$tmp"
+	mv "$tmp" "$dst"
+	echo "Installed genesis into $dst (sha256 $(nura::sha256 "$dst"))"
+}
+
+# Ensures NODE_HOME holds the genesis this validator should run, so no step of
+# the workflow depends on the operator remembering to copy the file. A stale
+# copy left in NODE_HOME is the cause of both the "not the coordinator's
+# genesis" gentx failure and the post-collect checksum mismatch, so an
+# authoritative source always overwrites what is already there.
+nura::sync_genesis() {
+	: "${NODE_HOME:?Set NODE_HOME}"
+	local dst="$NODE_HOME/config/genesis.json"
+
+	# The file the coordinator sent wins; GENESIS_HOME only exists on the
+	# coordinator itself, where it is the file being published.
+	if [[ -n "${GENESIS_SOURCE:-}" ]]; then
+		nura::install_genesis "$GENESIS_SOURCE" "$dst"
+	elif [[ -n "${GENESIS_HOME:-}" && -f "$GENESIS_HOME/config/genesis.json" ]]; then
+		nura::install_genesis "$GENESIS_HOME/config/genesis.json" "$dst"
+	elif [[ ! -f "$dst" ]]; then
+		nura::die "missing $dst.
+Set GENESIS_SOURCE in nura.env to the genesis file the coordinator sent you, or
+run 02_prepare_genesis.sh if this host is the coordinator."
+	fi
 }

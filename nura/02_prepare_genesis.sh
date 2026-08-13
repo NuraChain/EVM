@@ -145,6 +145,13 @@ done
 
 nura::run_as evmd genesis validate-genesis --home "$GENESIS_HOME"
 
+# 03_create_gentx.sh signs against NODE_HOME's genesis, so the coordinator's own
+# node gets the prepared file immediately. Without this the gentx would be
+# signed against the stock `evmd init` genesis still sitting there.
+if [[ -n "${NODE_HOME:-}" && -d "$NODE_HOME/config" ]]; then
+	nura::install_genesis "$GENESIS" "$NODE_HOME/config/genesis.json"
+fi
+
 echo
 echo "Prepared shared genesis at $GENESIS"
 echo "  denom              ${DENOM} (display ${DISPLAY_DENOM}, 18 decimals)"

@@ -32,13 +32,24 @@ nura::run_as evmd genesis validate-genesis --home "$GENESIS_HOME"
 
 CHECKSUM="$(nura::sha256 "$GENESIS")"
 
+# collect-gentxs rewrote the genesis, so the copy 02_prepare_genesis.sh put in
+# NODE_HOME is now stale. Refreshing it here is what keeps 05_configure_node.sh
+# from failing its checksum check on the coordinator's own node.
+if [[ -n "${NODE_HOME:-}" && -d "$NODE_HOME/config" ]]; then
+	nura::install_genesis "$GENESIS" "$NODE_HOME/config/genesis.json"
+fi
+
+nura::set_env_var GENESIS_SHA256 "$CHECKSUM"
+
 cat <<EOF
 
 Final genesis: $GENESIS
 SHA256:        $CHECKSUM
 
-Distribute this checksum to every validator alongside the genesis file. Each
-validator must set GENESIS_SHA256 in their nura.env so 05_configure_node.sh can
-prove they hold a byte-identical genesis before the chain starts. A validator
-running even a slightly different genesis will fail to reach consensus.
+GENESIS_SHA256 has been set in this host's nura.env. Distribute the checksum to
+every other validator alongside the genesis file. Each of them must set
+GENESIS_SHA256 and GENESIS_SOURCE in their own nura.env so 05_configure_node.sh
+can prove they hold a byte-identical genesis before the chain starts. A
+validator running even a slightly different genesis will fail to reach
+consensus.
 EOF

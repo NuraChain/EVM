@@ -42,6 +42,7 @@ nano nura.env
 | `GENESIS_TIME` | Coordinated launch time, so the chain does not start whenever 2/3 of voting power happens to come online. |
 | `GOV_MIN_DEPOSIT` | The SDK default is worth about 1e-11 whole tokens on an 18-decimal chain. |
 | `PERSISTENT_PEERS` | Set per host, after every validator has run `01_init_node.sh`. |
+| `GENESIS_SOURCE` | On every validator except the coordinator: where the coordinator's genesis file landed on this host. The scripts install it into `NODE_HOME` from there. |
 
 ## Workflow
 
@@ -65,7 +66,7 @@ sudo ./02_prepare_genesis.sh
 
 This sets the denom across staking/mint/gov/evm/bank, sets the gov deposit *amounts* (not just denoms), enables the fee market with a real floor, replaces the example WEVMOS token pair with your own wrapped native token, drops the unimplemented vesting precompile from the active list, and caps `block.max_gas`.
 
-Copy `GENESIS_HOME/config/genesis.json` to `NODE_HOME/config/genesis.json` on every validator.
+The coordinator's own node gets this genesis installed automatically. Send `GENESIS_HOME/config/genesis.json` to every other validator, and have each set `GENESIS_SOURCE` in their `nura.env` to wherever the file landed. The scripts copy it into `NODE_HOME` from there; never copy a genesis into `NODE_HOME/config` by hand.
 
 **4. On every validator**, create a gentx and send `config/gentx/*.json` back to the coordinator:
 
@@ -79,9 +80,9 @@ On the coordinator, set `GENTX_FILES`, then:
 sudo ./04_collect_genesis.sh
 ```
 
-This prints the genesis SHA256. Publish it with the genesis file. Copy the final genesis to every validator and have each set `GENESIS_SHA256` in their `nura.env`.
+`collect-gentxs` rewrites the genesis, so the file every validator signed against is now stale. This step prints the final SHA256 and writes it into the coordinator's `nura.env`. Send the new genesis to every other validator — replacing the one from step 3, at the same `GENESIS_SOURCE` path — and give them the checksum to put in `GENESIS_SHA256`.
 
-**5. Configure each node.** Verifies the genesis checksum, then writes `app.toml` and `config.toml`:
+**5. Configure each node.** Installs the genesis from `GENESIS_SOURCE`, verifies its checksum, then writes `app.toml` and `config.toml`:
 
 ```bash
 sudo ./05_configure_node.sh
@@ -89,7 +90,7 @@ sudo ./05_configure_node.sh
 
 This is what enables the EVM JSON-RPC (disabled by default in cosmos/evm) and sets `evm-chain-id`. Set `PERSISTENT_PEERS` and `EXTERNAL_ADDRESS` in `nura.env` first.
 
-**6. Install the systemd service and firewall, then start.**
+**6. Install the systemd service, then start.**
 
 ```bash
 sudo ./06_install_service.sh
@@ -104,7 +105,7 @@ evmd status | jq '.sync_info'
 ## Production notes
 
 - Use at least four validators on separate hosts. One validator is not production-grade.
-- Only P2P `26656` is exposed. CometBFT RPC, REST, gRPC, and JSON-RPC are bound to loopback by `05_configure_node.sh` and blocked by `08_firewall.sh`. Serve public RPC from a separate non-validator node behind an authenticated TLS reverse proxy.
+- CometBFT RPC, REST, gRPC, and JSON-RPC are bound to loopback by `05_configure_node.sh`; only P2P `26656` needs to be reachable. Restrict the rest at your host firewall as well, and serve public RPC from a separate non-validator node behind an authenticated TLS reverse proxy.
 - Never use the `test` keyring backend; the scripts reject it.
 - Never expose the `personal`, `debug`, or `miner` JSON-RPC namespaces; `05_configure_node.sh` rejects them.
 - **Never run two nodes from a copy of the same `NODE_HOME`.** Duplicated `priv_validator_key.json` means double-signing, which is slashed and tombstoned permanently. Never roll back `priv_validator_state.json`.
@@ -150,6 +151,8 @@ sudo ./06_install_service.sh
 sudo ./07_start.sh
 ```
 
-بعد از `04_collect_genesis.sh` مقدار SHA256 چاپ می‌شود؛ آن را همراه فایل genesis به همه validatorها بدهید و هر validator آن را در `GENESIS_SHA256` قرار دهد تا مطمئن شوید همه دقیقاً یک genesis دارند.
+فایل genesis را هیچ‌وقت دستی داخل `NODE_HOME/config` کپی نکنید؛ اسکریپت‌ها خودشان این کار را می‌کنند. روی coordinator، خروجی `02_prepare_genesis.sh` و `04_collect_genesis.sh` خودکار در `NODE_HOME` نصب می‌شود. روی بقیه validatorها فایل را از coordinator بگیرید و مسیرش را در `GENESIS_SOURCE` بنویسید؛ `03_create_gentx.sh` و `05_configure_node.sh` آن را نصب می‌کنند.
+
+بعد از `04_collect_genesis.sh` مقدار SHA256 چاپ می‌شود و در `nura.env` همان coordinator نوشته می‌شود. توجه کنید که `collect-gentxs` فایل genesis را تغییر می‌دهد، پس **نسخهٔ نهایی** را دوباره به همه validatorها بدهید (جایگزین نسخهٔ مرحلهٔ قبل، در همان مسیر `GENESIS_SOURCE`) و هر validator مقدار SHA256 را در `GENESIS_SHA256` قرار دهد تا مطمئن شوید همه دقیقاً یک genesis دارند.
 
 فقط پورت `26656` برای P2P باز است. پورت‌های RPC و API روی loopback هستند و نباید مستقیماً عمومی شوند. کلید `priv_validator_key.json` را هرگز روی دو سرور همزمان اجرا نکنید؛ double-sign باعث slash و tombstone دائمی می‌شود.

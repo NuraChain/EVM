@@ -14,9 +14,9 @@ nura::require_cmd evmd jq
 
 SELF_DELEGATION_BASE="$(nura::to_base_units "$GENTX_SELF_DELEGATION" GENTX_SELF_DELEGATION)"
 
-# The coordinator's genesis must already be in place, otherwise the gentx is
-# signed against the wrong chain state and collect-gentxs will reject it.
-[[ -f "$NODE_HOME/config/genesis.json" ]] || nura::die "missing $NODE_HOME/config/genesis.json. Copy the coordinator genesis here first."
+# The coordinator's genesis must be in place, otherwise the gentx is signed
+# against the wrong chain state and collect-gentxs will reject it.
+nura::sync_genesis
 
 nura::enter_workdir "$NODE_HOME"
 
