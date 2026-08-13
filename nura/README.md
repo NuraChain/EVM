@@ -93,7 +93,6 @@ This is what enables the EVM JSON-RPC (disabled by default in cosmos/evm) and se
 
 ```bash
 sudo ./06_install_service.sh
-sudo ./08_firewall.sh
 sudo ./07_start.sh
 ```
 
@@ -148,7 +147,6 @@ sudo ./03_create_gentx.sh   # روی همه VPSها
 sudo ./04_collect_genesis.sh # فقط روی coordinator
 sudo ./05_configure_node.sh # روی همه VPSها
 sudo ./06_install_service.sh
-sudo ./08_firewall.sh
 sudo ./07_start.sh
 ```
 
