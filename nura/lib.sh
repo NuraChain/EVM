@@ -56,6 +56,27 @@ nura::validate_hex_address() {
 	[[ "$1" =~ ^0x[0-9a-fA-F]{40}$ ]] || nura::die "$2='$1' is not a 20-byte hex address."
 }
 
+# The bech32 data charset excludes 1, b, i, and o. A 20-byte account address is
+# always 38 characters after the "nura1" separator. Catches the common mistake
+# of pasting an 0x address, a validator operator address, or a key name where a
+# genesis account address belongs.
+nura::validate_account_address() {
+	[[ "$1" =~ ^nura1[qpzry9x8gf2tvdw0s3jn54khce6mua7l]{38}$ ]] ||
+		nura::die "$2='$1' is not a nura bech32 account address."
+}
+
+# Whole-token amounts are summed with bash arithmetic, which is 64-bit and wraps
+# silently on overflow. Capping each amount at 15 digits keeps any realistic
+# total far below that limit, so an allocation table can never wrap into a
+# smaller number that happens to match TOTAL_SUPPLY.
+nura::validate_token_amount() {
+	nura::validate_uint "$1" "$2"
+	[[ "${#1}" -le 15 ]] || nura::die "$2='$1' exceeds the 999999999999999 whole-token limit."
+	# A leading zero is a typo, and it would also survive into the base-unit
+	# string that the final supply is compared against byte for byte.
+	[[ "$1" == "0" || "${1:0:1}" != "0" ]] || nura::die "$2='$1' has a leading zero."
+}
+
 # Converts a whole-token amount to base units. Done by string append because
 # 18-decimal amounts overflow bash's 64-bit integers.
 nura::to_base_units() {
