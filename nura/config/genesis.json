@@ -1,6 +1,6 @@
 {
   "app_name": "evmd",
-  "app_version": "938f6c8",
+  "app_version": "166546c",
   "genesis_time": "2026-06-06T00:00:00Z",
   "chain_id": "nura_1020-1",
   "initial_height": 1,
@@ -18,7 +18,7 @@
       "accounts": [
         {
           "@type": "/cosmos.auth.v1beta1.BaseAccount",
-          "address": "nura1ud4pa9jw6yumzu8cpkp09h75r22af6xwpa6w4c",
+          "address": "nura1ftqdjvqyy26q3w32harejhy8eue8vdcjfp6r77",
           "pub_key": null,
           "account_number": "0",
           "sequence": "0"
@@ -35,11 +35,11 @@
       },
       "balances": [
         {
-          "address": "nura1ud4pa9jw6yumzu8cpkp09h75r22af6xwpa6w4c",
+          "address": "nura1ftqdjvqyy26q3w32harejhy8eue8vdcjfp6r77",
           "coins": [
             {
               "denom": "anura",
-              "amount": "1000000000000000000000000"
+              "amount": "1000000000000000000000000000"
             }
           ]
         }
@@ -47,7 +47,7 @@
       "supply": [
         {
           "denom": "anura",
-          "amount": "1000000000000000000000000"
+          "amount": "1000000000000000000000000000"
         }
       ],
       "denom_metadata": [
@@ -177,18 +177,18 @@
                 },
                 "min_self_delegation": "1",
                 "delegator_address": "",
-                "validator_address": "nuravaloper1ud4pa9jw6yumzu8cpkp09h75r22af6xwc9n9ew",
+                "validator_address": "nuravaloper1ftqdjvqyy26q3w32harejhy8eue8vdcjsengjg",
                 "pubkey": {
                   "@type": "/cosmos.crypto.ed25519.PubKey",
-                  "key": "3re/Ptmc8jig9TAKnhjhGDoA6LOfD1uqM3mqecyGyvs="
+                  "key": "QZwv231zfmGgdsSiqHEcKvbnxQKHhIuaALkxTveJcpE="
                 },
                 "value": {
                   "denom": "anura",
-                  "amount": "100000000000000000000000"
+                  "amount": "1000000000000000000000000"
                 }
               }
             ],
-            "memo": "c01f954d5f39718450cb54a7cc1485f17110a3d9@43.225.90.112:26656",
+            "memo": "c0d9193c5af6cbd5d2828a46bb7a518bef8c2238@43.225.90.112:26656",
             "timeout_height": "0",
             "unordered": false,
             "timeout_timestamp": null,
@@ -200,7 +200,7 @@
               {
                 "public_key": {
                   "@type": "/cosmos.evm.crypto.v1.ethsecp256k1.PubKey",
-                  "key": "A1CieJvW3/7PYt+/ybShoT7aWXgtoqey631VVpS6DWyf"
+                  "key": "AzHfKa3oF2/KHfzbKIPogsDpA7R+Gw9Uucahkgke2C5H"
                 },
                 "mode_info": {
                   "single": {
@@ -224,7 +224,7 @@
             "tip": null
           },
           "signatures": [
-            "F8FaBU+7mxtzZNPwE9CUcQztx/LpxheGJDBXcXz41XIzvt5qU6P0SYy0AxE03o54K1/CxEo1vXv2PqSrqZe90AE="
+            "uOsnaXLlMuJuDH6ANLA9ve8Er5CpmzA/bsWJJG2gFt4LESb3S9abHJ5vIFhu7Z2dJ97KNG9uJRNE/YIKTfQ4AAA="
           ]
         }
       ]
@@ -241,7 +241,7 @@
         "min_deposit": [
           {
             "denom": "anura",
-            "amount": "10000000000000000000000"
+            "amount": "100000000000000000000000"
           }
         ],
         "max_deposit_period": "172800s",
@@ -257,7 +257,7 @@
         "expedited_min_deposit": [
           {
             "denom": "anura",
-            "amount": "50000000000000000000000"
+            "amount": "500000000000000000000000"
           }
         ],
         "burn_vote_quorum": false,
@@ -311,17 +311,17 @@
     },
     "mint": {
       "minter": {
-        "inflation": "0.130000000000000000",
+        "inflation": "0.000000000000000000",
         "annual_provisions": "0.000000000000000000"
       },
       "params": {
         "mint_denom": "anura",
-        "inflation_rate_change": "0.130000000000000000",
-        "inflation_max": "0.200000000000000000",
-        "inflation_min": "0.070000000000000000",
+        "inflation_rate_change": "0.000000000000000000",
+        "inflation_max": "0.000000000000000000",
+        "inflation_min": "0.000000000000000000",
         "goal_bonded": "0.670000000000000000",
         "blocks_per_year": "10519200",
-        "max_supply": "0"
+        "max_supply": "1000000000000000000000000000"
       }
     },
     "slashing": {
@@ -368,7 +368,7 @@
     "params": {
       "block": {
         "max_bytes": "22020096",
-        "max_gas": "100000000"
+        "max_gas": "150000000"
       },
       "evidence": {
         "max_age_num_blocks": "100000",
