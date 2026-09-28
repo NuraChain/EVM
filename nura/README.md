@@ -104,6 +104,16 @@ journalctl -u evmd -f
 evmd status | jq '.sync_info'
 ```
 
+## Relaunching from scratch
+
+`01_init_node.sh` reuses whatever `NODE_HOME` already holds, so an old chain must be removed first. On every host, back up `NODE_HOME`, then:
+
+```bash
+sudo ./uninstall.sh --yes
+```
+
+It stops and removes `evmd.service` and moves `NODE_HOME` aside (nothing is deleted). Refresh `nura.env` from `nura.env.example`, then run the workflow from step 2.
+
 ## Token supply
 
 Nura has a **fixed supply of `TOTAL_SUPPLY` whole tokens and 0% inflation**. Every token that will ever exist is created in genesis, so `02_prepare_genesis.sh` is the only place the distribution is ever decided.
