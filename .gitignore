@@ -39,3 +39,7 @@ tests/systemtests/testnet
 .testnets
 
 .claude/
+
+# Nura node secrets
+nura.env
+*.mnemonic
