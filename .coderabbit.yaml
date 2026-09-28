@@ -1,0 +1,44 @@
+# yaml-language-server: $schema=https://coderabbit.ai/integrations/schema.v2.json
+language: "en-US"
+reviews:
+  profile: "assertive"
+  request_changes_workflow: true
+  high_level_summary: true
+  review_status: true
+  review_details: true
+  poem: false
+  auto_review:
+    enabled: true
+    drafts: false
+  path_filters:
+    - "!**/vendor/**"
+    - "!**/node_modules/**"
+    - "!**/dist/**"
+    - "!**/target/**"
+    - "!**/*.lock"
+  path_instructions:
+    - path: "**/*.go"
+      instructions: |
+        Review as production Cosmos SDK / CometBFT / EVM blockchain infrastructure.
+        - Check consensus-critical behavior, determinism, state transitions, gas accounting, nonce handling, error propagation, concurrency, and resource exhaustion.
+        - Treat changes touching ante handlers, EVM execution, feemarket, staking, governance, IBC, state stores, precompiles, RPC, or consensus paths as high risk.
+        - Flag nondeterministic behavior, unsafe goroutines, unchecked errors, integer/decimal precision issues, denial-of-service vectors, and consensus divergence risks.
+        - Verify backwards compatibility and migration/upgrade implications for persistent state.
+    - path: "**/*.{proto,proto3}"
+      instructions: |
+        Review protobuf changes for wire compatibility, field numbering, backwards compatibility, deterministic behavior, and generated-code implications.
+    - path: "**/*.sol"
+      instructions: |
+        Review Solidity as security-critical EVM infrastructure. Check access control, reentrancy, arithmetic/precision, token accounting, signature/replay protection, gas griefing, and unsafe external calls.
+    - path: "**/precompiles/**"
+      instructions: |
+        Treat precompiles as consensus-critical. Check gas costs, ABI decoding, authorization, deterministic state access, error behavior, and compatibility with Ethereum tooling.
+    - path: "**/x/**"
+      instructions: |
+        Treat Cosmos SDK modules as consensus/state-critical. Review keeper authority, message validation, state transitions, queries, genesis/import-export behavior, and migration safety.
+    - path: "**/*_test.go"
+      instructions: |
+        Require meaningful tests for consensus-critical and state-changing behavior, including negative paths, malformed inputs, authorization failures, gas edge cases, and upgrade/migration scenarios.
+    - path: "**/*.{md,mdx}"
+      instructions: |
+        Verify chain IDs, denomination/base-unit conversions, gas/base-fee semantics, governance procedures, RPC endpoints, and deployment instructions.
