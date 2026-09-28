@@ -115,7 +115,7 @@ Nura has a **fixed supply of `TOTAL_SUPPLY` whole tokens and 0% inflation**. Eve
 
 `nura/zeroinflation_test.go` asserts both against the real SDK code, including a negative control proving the stock params would inflate. Run it with `go test ./nura/...`.
 
-The allocation table is reconciled before anything is written: every address in `VALIDATOR_ADDRESSES` gets `GENESIS_BALANCE`, every `address:amount` pair in `GENESIS_ALLOCATIONS` gets its amount, and the script aborts unless the total equals `TOTAL_SUPPLY` exactly. It also rejects duplicate addresses and malformed bech32, and re-reads `bank.supply` from the finished file to confirm the chain will start with the intended number.
+The allocation table is reconciled before anything is written: every address in `VALIDATOR_ADDRESSES` gets `GENESIS_BALANCE` (or its own amount, written `address:amount`), every `address:amount` pair in `GENESIS_ALLOCATIONS` gets its amount, and the script aborts unless the total equals `TOTAL_SUPPLY` exactly. It also rejects duplicate addresses and malformed bech32, and re-reads `bank.supply` from the finished file to confirm the chain will start with the intended number.
 
 Two consequences worth deciding on deliberately:
 
@@ -162,7 +162,7 @@ chmod 700 *.sh
 
 عرضهٔ Nura ثابت است و inflation صفر است. تمام توکن‌ها فقط در genesis ساخته می‌شوند و بعد از آن هیچ توکن جدیدی mint نمی‌شود. برای همین `02_prepare_genesis.sh` تنها جایی است که توزیع توکن تعیین می‌شود؛ بعد از launch دیگر قابل اصلاح نیست.
 
-`TOTAL_SUPPLY` کل عرضه است. هر آدرس در `VALIDATOR_ADDRESSES` مقدار `GENESIS_BALANCE` می‌گیرد، و بقیهٔ حساب‌ها (خزانه، تیم، اکوسیستم) به‌صورت جفت‌های `address:amount` در `GENESIS_ALLOCATIONS` نوشته می‌شوند. اسکریپت قبل از نوشتن هر فایلی جمع می‌زند و اگر مجموع دقیقاً برابر `TOTAL_SUPPLY` نباشد با خطا متوقف می‌شود، پس عرضهٔ اشتباه هیچ‌وقت وارد genesis نمی‌شود.
+`TOTAL_SUPPLY` کل عرضه است. هر آدرس در `VALIDATOR_ADDRESSES` مقدار `GENESIS_BALANCE` می‌گیرد (یا مقدار خودش اگر به‌صورت `address:amount` نوشته شود)، و بقیهٔ حساب‌ها (خزانه، تیم، اکوسیستم) به‌صورت جفت‌های `address:amount` در `GENESIS_ALLOCATIONS` نوشته می‌شوند. اسکریپت قبل از نوشتن هر فایلی جمع می‌زند و اگر مجموع دقیقاً برابر `TOTAL_SUPPLY` نباشد با خطا متوقف می‌شود، پس عرضهٔ اشتباه هیچ‌وقت وارد genesis نمی‌شود.
 
 توجه: با inflation صفر، validatorها فقط کارمزد تراکنش‌ها را دریافت می‌کنند و هیچ staking reward وجود ندارد.
 

@@ -75,7 +75,13 @@ IFS=',' read -r -a validator_addresses <<< "$VALIDATOR_ADDRESSES"
 for entry in ${validator_addresses[@]+"${validator_addresses[@]}"}; do
 	entry="${entry//[[:space:]]/}"
 	[[ -n "$entry" ]] || continue
-	nura::allocate "$entry" "$GENESIS_BALANCE" "validator"
+	# An optional ":amount" overrides GENESIS_BALANCE, e.g. to absorb the
+	# remainder of a pool that does not divide evenly between validators.
+	if [[ "$entry" == *:* ]]; then
+		nura::allocate "${entry%%:*}" "${entry##*:}" "validator"
+	else
+		nura::allocate "$entry" "$GENESIS_BALANCE" "validator"
+	fi
 done
 [[ "${#ALLOC_ADDRESSES[@]}" -gt 0 ]] || nura::die "VALIDATOR_ADDRESSES contains no addresses."
 
@@ -90,7 +96,7 @@ done
 
 if [[ "$ALLOCATED_TOTAL" -ne "$TOTAL_SUPPLY" ]]; then
 	nura::die "allocations total ${ALLOCATED_TOTAL} ${DISPLAY_DENOM} but TOTAL_SUPPLY is ${TOTAL_SUPPLY}.
-${#ALLOC_ADDRESSES[@]} account(s): ${#validator_addresses[@]} validator(s) at ${GENESIS_BALANCE} each, plus GENESIS_ALLOCATIONS.
+${#ALLOC_ADDRESSES[@]} account(s): ${#validator_addresses[@]} validator(s) at ${GENESIS_BALANCE} each unless overridden, plus GENESIS_ALLOCATIONS.
 Nothing is minted after genesis, so the two must match exactly. Adjust
 GENESIS_ALLOCATIONS, GENESIS_BALANCE, or TOTAL_SUPPLY until they do."
 fi
