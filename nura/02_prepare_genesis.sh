@@ -15,6 +15,10 @@ nura::load_env "$SCRIPT_DIR"
 : "${GENESIS_ALLOCATIONS:=}"
 : "${GOV_MIN_DEPOSIT:=10000}"
 : "${GOV_EXPEDITED_MIN_DEPOSIT:=50000}"
+: "${GOV_VOTING_PERIOD:=172800s}"
+: "${GOV_EXPEDITED_VOTING_PERIOD:=86400s}"
+: "${UNBONDING_TIME:=1814400s}"
+: "${ACTIVE_STATIC_PRECOMPILES:=}"
 : "${BLOCK_MAX_GAS:=100000000}"
 : "${SECONDS_PER_BLOCK:=5}"
 : "${WRAPPED_NATIVE_ADDRESS:?Set WRAPPED_NATIVE_ADDRESS}"
@@ -27,6 +31,11 @@ nura::validate_uint "$BLOCK_MAX_GAS" "BLOCK_MAX_GAS"
 nura::validate_token_amount "$TOTAL_SUPPLY" "TOTAL_SUPPLY"
 nura::validate_token_amount "$GENESIS_BALANCE" "GENESIS_BALANCE"
 nura::validate_hex_address "$WRAPPED_NATIVE_ADDRESS" "WRAPPED_NATIVE_ADDRESS"
+
+IFS=',' read -r -a active_precompiles <<< "${ACTIVE_STATIC_PRECOMPILES//[[:space:]]/}"
+for entry in ${active_precompiles[@]+"${active_precompiles[@]}"}; do
+	nura::validate_hex_address "$entry" "ACTIVE_STATIC_PRECOMPILES entry"
+done
 
 # cosmos/evm's example genesis ships a token pair for the WEVMOS test contract.
 # Reusing that address would leave a dead pair pointing at the wrong denom.
@@ -124,6 +133,10 @@ jq \
 	--arg symbol "$SYMBOL" \
 	--arg gov_min_deposit "$GOV_MIN_DEPOSIT_BASE" \
 	--arg gov_expedited_min_deposit "$GOV_EXPEDITED_MIN_DEPOSIT_BASE" \
+	--arg gov_voting_period "$GOV_VOTING_PERIOD" \
+	--arg gov_expedited_voting_period "$GOV_EXPEDITED_VOTING_PERIOD" \
+	--arg unbonding_time "$UNBONDING_TIME" \
+	--arg precompiles "${ACTIVE_STATIC_PRECOMPILES//[[:space:]]/}" \
 	--arg min_gas_price "$MIN_GAS_PRICE_DEC" \
 	--arg base_fee "$BASE_FEE_DEC" \
 	--arg block_max_gas "$BLOCK_MAX_GAS" \
@@ -132,6 +145,7 @@ jq \
 	--arg werc20 "$WRAPPED_NATIVE_ADDRESS" \
 	--arg vesting "$VESTING_PRECOMPILE" '
   .app_state.staking.params.bond_denom = $denom |
+  .app_state.staking.params.unbonding_time = $unbonding_time |
   .app_state.mint.params.mint_denom = $denom |
   .app_state.mint.params.blocks_per_year = $blocks_per_year |
 
@@ -155,10 +169,14 @@ jq \
   # 10000000 base units makes a proposal deposit worth 1e-11 whole tokens.
   .app_state.gov.params.min_deposit = [{ denom: $denom, amount: $gov_min_deposit }] |
   .app_state.gov.params.expedited_min_deposit = [{ denom: $denom, amount: $gov_expedited_min_deposit }] |
+  .app_state.gov.params.voting_period = $gov_voting_period |
+  .app_state.gov.params.expedited_voting_period = $gov_expedited_voting_period |
 
   .app_state.evm.params.evm_denom = $denom |
+  # Empty keeps whatever `evmd init` enabled.
   .app_state.evm.params.active_static_precompiles =
-    (.app_state.evm.params.active_static_precompiles | map(select(. != $vesting))) |
+    ((if $precompiles == "" then .app_state.evm.params.active_static_precompiles
+      else $precompiles | split(",") end) | map(select(. != $vesting))) |
 
   # The example chain disables the base fee and leaves the floor at zero, so
   # nothing at the consensus layer stops zero-price EVM transactions. Node-local
