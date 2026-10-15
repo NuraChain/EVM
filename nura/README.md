@@ -43,24 +43,37 @@ nano nura.env
 | `GENESIS_ALLOCATIONS` | Treasury, ecosystem, and team accounts. Genesis is the only chance to create them. |
 | `GENESIS_TIME` | Coordinated launch time, so the chain does not start whenever 2/3 of voting power happens to come online. |
 | `GOV_MIN_DEPOSIT` | The SDK default is worth about 1e-11 whole tokens on an 18-decimal chain. |
-| `PERSISTENT_PEERS` | Set per host, after every validator has run `01_init_node.sh`. |
-| `GENESIS_SOURCE` | On every validator except the coordinator: where the coordinator's genesis file landed on this host. The scripts install it into `NODE_HOME` from there. |
+| `PERSISTENT_PEERS` | Set per host. A validator that joins after launch needs at least the coordinator's `nodeid@host:26656`. |
+| `GENESIS_SOURCE` | On every validator except the coordinator: where the coordinator's final genesis file landed on this host. The scripts install it into `NODE_HOME` from there. |
 
 ## Workflow
 
-**1. Build and install on every VPS.** Also creates the unprivileged `evmd` service user.
+The chain launches with a single validator, the coordinator. Every validator account is funded in genesis, but only the coordinator signs a gentx; the others join after launch with `08_create_validator.sh` (see [Adding validators after launch](#adding-validators-after-launch)). Steps 1 to 6 below run on the coordinator.
+
+**1. Build and install.** Also creates the unprivileged `evmd` service user. Every server needs a fresh build from this repository: the binary itself never mints (see [Token supply](#token-supply)).
 
 ```bash
 sudo ./00_build.sh
 ```
 
-**2. Initialize each validator.** Save the printed account address and node ID.
+**2. Initialize the node.** Save the printed account address and node ID.
+
+To run the validator from an existing wallet key instead of a freshly generated one, import it under `VALIDATOR_KEY` first, and `01_init_node.sh` will use it. Import only that validator's own private key, never a mnemonic. The key is read inside a shell that already runs as `evmd`, so it never appears in the shell history or in the command line `sudo` logs:
+
+```bash
+sudo install -d -o evmd -g evmd -m 0750 /home/EVM/.evmd
+sudo -u evmd bash -c 'cd /home/EVM/.evmd && read -rsp "Private key: " PK && echo && evmd keys unsafe-import-eth-key validator "$PK" --keyring-backend file --home /home/EVM/.evmd'
+```
+
+Run every manual `evmd` command the same way, as `evmd` from inside `NODE_HOME`. From anywhere else it panics with `could not create directory "data"`.
 
 ```bash
 sudo ./01_init_node.sh
 ```
 
-**3. On the coordinator**, set `VALIDATOR_ADDRESSES` to the collected account addresses, then:
+The address it prints must be the one listed for this validator in `VALIDATOR_ADDRESSES`.
+
+**3. Prepare genesis.** Set `VALIDATOR_ADDRESSES` to every validator's account address, including the ones that join later, then:
 
 ```bash
 sudo ./02_prepare_genesis.sh
@@ -68,23 +81,23 @@ sudo ./02_prepare_genesis.sh
 
 This sets the denom across staking/mint/gov/evm/bank, fixes the supply (see below), sets the gov deposit *amounts* (not just denoms), enables the fee market with a real floor, replaces the example WEVMOS token pair with your own wrapped native token, drops the unimplemented vesting precompile from the active list, and caps `block.max_gas`.
 
-The coordinator's own node gets this genesis installed automatically. Send `GENESIS_HOME/config/genesis.json` to every other validator, and have each set `GENESIS_SOURCE` in their `nura.env` to wherever the file landed. The scripts copy it into `NODE_HOME` from there; never copy a genesis into `NODE_HOME/config` by hand.
+The coordinator's own node gets this genesis installed automatically. Never copy a genesis into `NODE_HOME/config` by hand.
 
-**4. On every validator**, create a gentx and send `config/gentx/*.json` back to the coordinator:
+**4. Create and collect the gentx.**
 
 ```bash
 sudo ./03_create_gentx.sh
 ```
 
-On the coordinator, set `GENTX_FILES`, then:
+Set `GENTX_FILES` to the gentx it wrote under `NODE_HOME/config/gentx`, then:
 
 ```bash
 sudo ./04_collect_genesis.sh
 ```
 
-`collect-gentxs` rewrites the genesis, so the file every validator signed against is now stale. This step prints the final SHA256 and writes it into the coordinator's `nura.env`. Send the new genesis to every other validator — replacing the one from step 3, at the same `GENESIS_SOURCE` path — and give them the checksum to put in `GENESIS_SHA256`.
+`collect-gentxs` rewrites the genesis. This step prints the final SHA256 and writes it into the coordinator's `nura.env`. This final `GENESIS_HOME/config/genesis.json` and its checksum are what every later validator needs.
 
-**5. Configure each node.** Installs the genesis from `GENESIS_SOURCE`, verifies its checksum, then writes `app.toml` and `config.toml`:
+**5. Configure the node.** Installs the genesis, verifies its checksum, then writes `app.toml` and `config.toml`:
 
 ```bash
 sudo ./05_configure_node.sh
@@ -104,6 +117,36 @@ journalctl -u evmd -f
 evmd status | jq '.sync_info'
 ```
 
+## Adding validators after launch
+
+Each further validator joins on its own server once the chain is running. Its account already holds its genesis balance, so all it needs is a synced node and one transaction.
+
+Until there are four validators, losing any one of them halts the chain. With equal stakes, two or three validators cannot keep more than 2/3 of the voting power online after one goes down. Bring validators 2, 3, and 4 up in quick succession.
+
+1. Run `00_build.sh`, import the validator's key if it comes from a wallet (step 2 above), then run `01_init_node.sh`. The printed address must match this validator's entry in the coordinator's `VALIDATOR_ADDRESSES`.
+2. Copy the coordinator's final genesis to this server. In `nura.env`, set `GENESIS_SOURCE` to its path, `GENESIS_SHA256` to the checksum `04_collect_genesis.sh` printed, `PERSISTENT_PEERS` to at least the coordinator's `nodeid@host:26656`, and `EXTERNAL_ADDRESS` to this host. Use the same `GENTX_SELF_DELEGATION` as the coordinator.
+3. Configure, install, and start the node:
+
+   ```bash
+   sudo ./05_configure_node.sh
+   sudo ./06_install_service.sh
+   sudo ./07_start.sh
+   ```
+
+4. Wait until the node has caught up. `catching_up` must be `false`:
+
+   ```bash
+   sudo -u evmd bash -c 'cd /home/EVM/.evmd && evmd status --home /home/EVM/.evmd' | jq '.sync_info.catching_up'
+   ```
+
+5. Bond the validator:
+
+   ```bash
+   sudo ./08_create_validator.sh
+   ```
+
+   It refuses to run while the node is still syncing or when this account is already a validator. It bonds `GENTX_SELF_DELEGATION` with the same commission as the genesis validator, and asks for the keyring passphrase and a confirmation before broadcasting.
+
 ## Relaunching from scratch
 
 `01_init_node.sh` reuses whatever `NODE_HOME` already holds, so an old chain must be removed first. On every host, back up `NODE_HOME`, then:
@@ -118,19 +161,19 @@ It stops and removes `evmd.service` and moves `NODE_HOME` aside (nothing is dele
 
 Nura has a **fixed supply of `TOTAL_SUPPLY` whole tokens and 0% inflation**. Every token that will ever exist is created in genesis, so `02_prepare_genesis.sh` is the only place the distribution is ever decided.
 
-`02_prepare_genesis.sh` enforces this two ways:
+This is enforced in three places:
 
-- **The mint module is switched off.** `inflation`, `inflation_max`, `inflation_min`, and `inflation_rate_change` are all set to zero. The SDK recomputes the inflation rate every block from the bonded ratio, but with both bounds at zero the result clamps to zero at any ratio, and a zero block provision is dropped by `sdk.NewCoins` before it reaches the bank. `goal_bonded` stays at `0.67` only because the params validator rejects a zero value; it is inert.
-- **`max_supply` is set to `TOTAL_SUPPLY`.** The SDK default of `0` means *unlimited*. A real cap makes `DefaultMintFn` refuse to push the supply past it even if the inflation params are ever changed.
-
-`nura/zeroinflation_test.go` asserts both against the real SDK code, including a negative control proving the stock params would inflate. Run it with `go test ./nura/...`.
+- **The binary never mints.** `evmd/app.go` gives the x/mint keeper a mint function that does nothing, so the begin blocker mints no tokens whatever the mint params say. The module stays wired in only because the shared test harness funds accounts through it.
+- **The mint params are zero.** `02_prepare_genesis.sh` sets `inflation`, `inflation_max`, `inflation_min`, and `inflation_rate_change` to zero, so mint queries and explorers report the 0% that actually applies instead of the SDK's default 13%. `goal_bonded` stays at `0.67` only because the params validator rejects a zero value; it is inert.
+- **`max_supply` is set to `TOTAL_SUPPLY`.** The SDK default of `0` means *unlimited*. It is a second guard in case a future binary restores the SDK's minting.
 
 The allocation table is reconciled before anything is written: every address in `VALIDATOR_ADDRESSES` gets `GENESIS_BALANCE` (or its own amount, written `address:amount`), every `address:amount` pair in `GENESIS_ALLOCATIONS` gets its amount, and the script aborts unless the total equals `TOTAL_SUPPLY` exactly. It also rejects duplicate addresses and malformed bech32, and re-reads `bank.supply` from the finished file to confirm the chain will start with the intended number.
 
 Two consequences worth deciding on deliberately:
 
 - **Validators earn transaction fees only.** There are no staking rewards, so on a chain with no traffic there is no validator revenue. Budget for this, or fund validator operations from a treasury allocation.
-- **Governance can still amend it.** `MsgUpdateParams` can change the inflation params and `max_supply` alike, so "fixed supply" is a consensus rule your validators enforce, not a mathematical impossibility. Making it structurally impossible means removing `x/mint` from `evmd/app.go`.
+- **Only a binary upgrade can change it.** A governance vote can still change the mint params, but the binary ignores them. Restoring inflation would take a software upgrade that every validator chooses to run.
+- **Some upstream tests no longer pass.** The distribution precompile and ante integration suites enable inflation and loop until rewards accrue. On this binary nothing is minted, so they hang until the test timeout.
 
 ## Production notes
 
@@ -174,23 +217,53 @@ chmod 700 *.sh
 
 `TOTAL_SUPPLY` کل عرضه است. هر آدرس در `VALIDATOR_ADDRESSES` مقدار `GENESIS_BALANCE` می‌گیرد (یا مقدار خودش اگر به‌صورت `address:amount` نوشته شود)، و بقیهٔ حساب‌ها (خزانه، تیم، اکوسیستم) به‌صورت جفت‌های `address:amount` در `GENESIS_ALLOCATIONS` نوشته می‌شوند. اسکریپت قبل از نوشتن هر فایلی جمع می‌زند و اگر مجموع دقیقاً برابر `TOTAL_SUPPLY` نباشد با خطا متوقف می‌شود، پس عرضهٔ اشتباه هیچ‌وقت وارد genesis نمی‌شود.
 
+خود binary هم هیچ‌وقت mint نمی‌کند: حتی اگر پارامترهای mint با رأی governance تغییر کنند نادیده گرفته می‌شوند، و فقط یک software upgrade می‌تواند inflation را برگرداند. برای همین روی هر سرور باید binary را با `00_build.sh` از همین repository بسازید.
+
 توجه: با inflation صفر، validatorها فقط کارمزد تراکنش‌ها را دریافت می‌کنند و هیچ staking reward وجود ندارد.
 
-ترتیب اجرا:
+شبکه فقط با یک validator (coordinator) شروع می‌شود. حساب همهٔ validatorها در genesis پول می‌گیرد، ولی فقط coordinator gentx می‌سازد و بقیه بعد از launch با `08_create_validator.sh` وارد می‌شوند.
+
+ترتیب اجرا روی coordinator:
 
 ```bash
-sudo ./00_build.sh          # روی همه VPSها
-sudo ./01_init_node.sh      # روی همه VPSها
-sudo ./02_prepare_genesis.sh # فقط روی coordinator
-sudo ./03_create_gentx.sh   # روی همه VPSها
-sudo ./04_collect_genesis.sh # فقط روی coordinator
-sudo ./05_configure_node.sh # روی همه VPSها
+sudo ./00_build.sh
+sudo ./01_init_node.sh
+sudo ./02_prepare_genesis.sh
+sudo ./03_create_gentx.sh
+sudo ./04_collect_genesis.sh  # قبلش GENTX_FILES را روی gentx خود coordinator بگذارید
+sudo ./05_configure_node.sh
 sudo ./06_install_service.sh
 sudo ./07_start.sh
 ```
 
-فایل genesis را هیچ‌وقت دستی داخل `NODE_HOME/config` کپی نکنید؛ اسکریپت‌ها خودشان این کار را می‌کنند. روی coordinator، خروجی `02_prepare_genesis.sh` و `04_collect_genesis.sh` خودکار در `NODE_HOME` نصب می‌شود. روی بقیه validatorها فایل را از coordinator بگیرید و مسیرش را در `GENESIS_SOURCE` بنویسید؛ `03_create_gentx.sh` و `05_configure_node.sh` آن را نصب می‌کنند.
+اگر کلید validator از یک wallet (مثلاً MetaMask) است، قبل از `01_init_node.sh` فقط private key همان validator را import کنید، هیچ‌وقت ۱۲ کلمه را روی سرور نبرید:
 
-بعد از `04_collect_genesis.sh` مقدار SHA256 چاپ می‌شود و در `nura.env` همان coordinator نوشته می‌شود. توجه کنید که `collect-gentxs` فایل genesis را تغییر می‌دهد، پس **نسخهٔ نهایی** را دوباره به همه validatorها بدهید (جایگزین نسخهٔ مرحلهٔ قبل، در همان مسیر `GENESIS_SOURCE`) و هر validator مقدار SHA256 را در `GENESIS_SHA256` قرار دهد تا مطمئن شوید همه دقیقاً یک genesis دارند.
+```bash
+sudo install -d -o evmd -g evmd -m 0750 /home/EVM/.evmd
+sudo -u evmd bash -c 'cd /home/EVM/.evmd && read -rsp "Private key: " PK && echo && evmd keys unsafe-import-eth-key validator "$PK" --keyring-backend file --home /home/EVM/.evmd'
+```
+
+کلید داخل shell خود کاربر `evmd` خوانده می‌شود، پس نه در history می‌ماند و نه در لاگ `sudo`. هر دستور `evmd` را همین‌طور، به‌عنوان کاربر `evmd` و از داخل `NODE_HOME` اجرا کنید، وگرنه با خطای `could not create directory "data"` متوقف می‌شود. آدرسی که `01_init_node.sh` چاپ می‌کند باید همان آدرس این validator در `VALIDATOR_ADDRESSES` باشد.
+
+فایل genesis را هیچ‌وقت دستی داخل `NODE_HOME/config` کپی نکنید؛ اسکریپت‌ها خودشان این کار را می‌کنند. بعد از `04_collect_genesis.sh` مقدار SHA256 چاپ می‌شود و در `nura.env` همان coordinator نوشته می‌شود. فایل نهایی `GENESIS_HOME/config/genesis.json` و این SHA256 چیزی است که validatorهای بعدی لازم دارند.
+
+### اضافه کردن validator بعد از launch
+
+روی سرور هر validator جدید:
+
+```bash
+sudo ./00_build.sh
+# در صورت نیاز import کلید (بالا را ببینید)
+sudo ./01_init_node.sh
+# در nura.env: GENESIS_SOURCE (مسیر genesis نهایی)، GENESIS_SHA256،
+# PERSISTENT_PEERS (حداقل nodeid@host:26656 مربوط به coordinator)، EXTERNAL_ADDRESS
+sudo ./05_configure_node.sh
+sudo ./06_install_service.sh
+sudo ./07_start.sh
+# صبر کنید تا catching_up برابر false شود
+sudo ./08_create_validator.sh
+```
+
+`08_create_validator.sh` تا وقتی node هنوز sync نشده یا این حساب از قبل validator است اجرا نمی‌شود. تا وقتی کمتر از ۴ validator دارید، خاموش شدن هر کدام شبکه را متوقف می‌کند؛ پس validatorهای ۲ تا ۴ را پشت سر هم و سریع بالا بیاورید.
 
 فقط پورت `26656` برای P2P باز است. پورت‌های RPC و API روی loopback هستند و نباید مستقیماً عمومی شوند. کلید `priv_validator_key.json` را هرگز روی دو سرور همزمان اجرا نکنید؛ double-sign باعث slash و tombstone دائمی می‌شود.

@@ -19,6 +19,7 @@ nura::load_env "$SCRIPT_DIR"
 : "${GOV_VOTING_PERIOD:=172800s}"
 : "${GOV_EXPEDITED_VOTING_PERIOD:=86400s}"
 : "${UNBONDING_TIME:=1814400s}"
+: "${SIGNED_BLOCKS_WINDOW:=7200}"
 : "${ACTIVE_STATIC_PRECOMPILES:=}"
 : "${BLOCK_MAX_GAS:=100000000}"
 : "${SECONDS_PER_BLOCK:=5}"
@@ -29,6 +30,7 @@ nura::require_cmd evmd jq
 nura::validate_uint "$BASE_FEE_WEI" "BASE_FEE_WEI"
 nura::validate_uint "$SECONDS_PER_BLOCK" "SECONDS_PER_BLOCK"
 nura::validate_uint "$BLOCK_MAX_GAS" "BLOCK_MAX_GAS"
+nura::validate_uint "$SIGNED_BLOCKS_WINDOW" "SIGNED_BLOCKS_WINDOW"
 nura::validate_token_amount "$TOTAL_SUPPLY" "TOTAL_SUPPLY"
 nura::validate_token_amount "$GENESIS_BALANCE" "GENESIS_BALANCE"
 nura::validate_hex_address "$WRAPPED_NATIVE_ADDRESS" "WRAPPED_NATIVE_ADDRESS"
@@ -145,6 +147,7 @@ jq \
 	--arg gov_voting_period "$GOV_VOTING_PERIOD" \
 	--arg gov_expedited_voting_period "$GOV_EXPEDITED_VOTING_PERIOD" \
 	--arg unbonding_time "$UNBONDING_TIME" \
+	--arg signed_blocks_window "$SIGNED_BLOCKS_WINDOW" \
 	--arg precompiles "${ACTIVE_STATIC_PRECOMPILES//[[:space:]]/}" \
 	--arg min_gas_price "$MIN_GAS_PRICE_DEC" \
 	--arg base_fee "$BASE_FEE_DEC" \
@@ -155,6 +158,9 @@ jq \
 	--arg vesting "$VESTING_PRECOMPILE" '
   .app_state.staking.params.bond_denom = $denom |
   .app_state.staking.params.unbonding_time = $unbonding_time |
+  # The SDK default of 100 blocks jails a validator after about 2.5 minutes
+  # offline at 3s blocks, too short for routine maintenance.
+  .app_state.slashing.params.signed_blocks_window = $signed_blocks_window |
   .app_state.mint.params.mint_denom = $denom |
   .app_state.mint.params.blocks_per_year = $blocks_per_year |
 
@@ -276,5 +282,6 @@ echo "  wrapped native     ${WRAPPED_NATIVE_ADDRESS}"
 echo "  gov min deposit    ${GOV_MIN_DEPOSIT} ${DISPLAY_DENOM} (expedited ${GOV_EXPEDITED_MIN_DEPOSIT}), each deposit at least ${GOV_MIN_DEPOSIT_RATIO} of that"
 echo "  gov voting period  ${GOV_VOTING_PERIOD} (expedited ${GOV_EXPEDITED_VOTING_PERIOD})"
 echo "  unbonding time     ${UNBONDING_TIME}"
+echo "  slashing window    ${SIGNED_BLOCKS_WINDOW} blocks (~$(( SIGNED_BLOCKS_WINDOW * SECONDS_PER_BLOCK / 3600 ))h at ${SECONDS_PER_BLOCK}s per block)"
 echo
 echo "Validators earn transaction fees only. Nothing is minted after genesis."

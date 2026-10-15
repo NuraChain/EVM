@@ -342,6 +342,9 @@ func NewExampleApp(
 		app.BankKeeper,
 		authtypes.FeeCollectorName,
 		authAddr,
+		// Nura has a fixed supply. The begin blocker never mints, whatever the
+		// mint params say, so a governance params change cannot add inflation.
+		mintkeeper.WithMintFn(func(sdk.Context, *mintkeeper.Keeper) error { return nil }),
 	)
 
 	app.DistrKeeper = distrkeeper.NewKeeper(
