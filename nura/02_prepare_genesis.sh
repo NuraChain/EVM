@@ -15,6 +15,7 @@ nura::load_env "$SCRIPT_DIR"
 : "${GENESIS_ALLOCATIONS:=}"
 : "${GOV_MIN_DEPOSIT:=10000}"
 : "${GOV_EXPEDITED_MIN_DEPOSIT:=50000}"
+: "${GOV_MIN_DEPOSIT_RATIO:=0.01}"
 : "${GOV_VOTING_PERIOD:=172800s}"
 : "${GOV_EXPEDITED_VOTING_PERIOD:=86400s}"
 : "${UNBONDING_TIME:=1814400s}"
@@ -31,6 +32,7 @@ nura::validate_uint "$BLOCK_MAX_GAS" "BLOCK_MAX_GAS"
 nura::validate_token_amount "$TOTAL_SUPPLY" "TOTAL_SUPPLY"
 nura::validate_token_amount "$GENESIS_BALANCE" "GENESIS_BALANCE"
 nura::validate_hex_address "$WRAPPED_NATIVE_ADDRESS" "WRAPPED_NATIVE_ADDRESS"
+GOV_MIN_DEPOSIT_RATIO_DEC="$(nura::ratio_to_legacy_dec "$GOV_MIN_DEPOSIT_RATIO" GOV_MIN_DEPOSIT_RATIO)"
 
 IFS=',' read -r -a active_precompiles <<< "${ACTIVE_STATIC_PRECOMPILES//[[:space:]]/}"
 for entry in ${active_precompiles[@]+"${active_precompiles[@]}"}; do
@@ -139,6 +141,7 @@ jq \
 	--arg symbol "$SYMBOL" \
 	--arg gov_min_deposit "$GOV_MIN_DEPOSIT_BASE" \
 	--arg gov_expedited_min_deposit "$GOV_EXPEDITED_MIN_DEPOSIT_BASE" \
+	--arg gov_min_deposit_ratio "$GOV_MIN_DEPOSIT_RATIO_DEC" \
 	--arg gov_voting_period "$GOV_VOTING_PERIOD" \
 	--arg gov_expedited_voting_period "$GOV_EXPEDITED_VOTING_PERIOD" \
 	--arg unbonding_time "$UNBONDING_TIME" \
@@ -175,6 +178,9 @@ jq \
   # 10000000 base units makes a proposal deposit worth 1e-11 whole tokens.
   .app_state.gov.params.min_deposit = [{ denom: $denom, amount: $gov_min_deposit }] |
   .app_state.gov.params.expedited_min_deposit = [{ denom: $denom, amount: $gov_expedited_min_deposit }] |
+  # The smallest single deposit, as a share of the minimum above for that
+  # proposal type. It applies to the deposit that opens a proposal too.
+  .app_state.gov.params.min_deposit_ratio = $gov_min_deposit_ratio |
   .app_state.gov.params.voting_period = $gov_voting_period |
   .app_state.gov.params.expedited_voting_period = $gov_expedited_voting_period |
 
@@ -267,6 +273,8 @@ echo "  min gas price      ${MIN_GAS_PRICE_WEI}${DENOM} per gas (consensus-enfor
 echo "  block max gas      ${BLOCK_MAX_GAS}"
 echo "  blocks per year    ${BLOCKS_PER_YEAR} (at ${SECONDS_PER_BLOCK}s per block)"
 echo "  wrapped native     ${WRAPPED_NATIVE_ADDRESS}"
-echo "  gov min deposit    ${GOV_MIN_DEPOSIT} ${DISPLAY_DENOM}"
+echo "  gov min deposit    ${GOV_MIN_DEPOSIT} ${DISPLAY_DENOM} (expedited ${GOV_EXPEDITED_MIN_DEPOSIT}), each deposit at least ${GOV_MIN_DEPOSIT_RATIO} of that"
+echo "  gov voting period  ${GOV_VOTING_PERIOD} (expedited ${GOV_EXPEDITED_VOTING_PERIOD})"
+echo "  unbonding time     ${UNBONDING_TIME}"
 echo
 echo "Validators earn transaction fees only. Nothing is minted after genesis."

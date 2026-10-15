@@ -90,6 +90,25 @@ nura::to_legacy_dec() {
 	echo "${1}.000000000000000000"
 }
 
+# Renders a ratio between 0 and 1 as a LegacyDec JSON string, padded to the 18
+# decimals the SDK writes itself. The format is checked here because x/gov does
+# not validate min_deposit_ratio: validate-genesis accepts a malformed value,
+# and the chain then rejects every deposit, including the one on the proposal
+# that would fix it.
+nura::ratio_to_legacy_dec() {
+	local whole frac=""
+	[[ "$1" =~ ^(0(\.[0-9]{1,18})?|1(\.0{1,18})?)$ ]] ||
+		nura::die "$2='$1' must be a decimal between 0 and 1 with at most 18 decimal places."
+	whole="${1%%.*}"
+	if [[ "$1" == *.* ]]; then
+		frac="${1#*.}"
+	fi
+	while [[ "${#frac}" -lt 18 ]]; do
+		frac+="0"
+	done
+	echo "${whole}.${frac}"
+}
+
 # Runs a command as NODE_USER. Runs directly when already that user, so the
 # scripts work both under sudo and as the service account itself.
 nura::run_as() {
