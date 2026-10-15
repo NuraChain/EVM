@@ -19,7 +19,7 @@ version = "0.39.0"
 proxy_app = "tcp://127.0.0.1:26658"
 
 # A custom human readable name for this node
-moniker = "validator-1"
+moniker = "lightbringer"
 
 # Database backend: goleveldb | cleveldb | rocksdb | badgerdb
 # * goleveldb (github.com/syndtr/goleveldb - most popular implementation)

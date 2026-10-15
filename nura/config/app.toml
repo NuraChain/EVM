@@ -8,7 +8,7 @@
 # The minimum gas prices a validator is willing to accept for processing a
 # transaction. A transaction's fees must meet the minimum of any denomination
 # specified in this config (e.g. 0.25token1,0.0001token2).
-minimum-gas-prices = "1000000000anura"
+minimum-gas-prices = "45000000000000anura"
 
 # The maximum gas a query coming over rest/grpc may consume.
 # If this is set to zero, the query can consume an unbounded amount of gas.
@@ -137,7 +137,7 @@ enable = true
 swagger = false
 
 # Address defines the API server to listen on.
-address = "tcp://127.0.0.1:1317"
+address = "tcp://localhost:1317"
 
 # MaxOpenConnections defines the number of maximum open connections.
 max-open-connections = 1000
@@ -164,7 +164,7 @@ enabled-unsafe-cors = false
 enable = true
 
 # Address defines the gRPC server address to bind to.
-address = "127.0.0.1:9090"
+address = "localhost:9090"
 
 # MaxRecvMsgSize defines the max message size in bytes the server can receive.
 # The default value is 10MB.
@@ -343,7 +343,7 @@ gas-cap = 25000000
 # Allow insecure account unlocking when account-related RPCs are exposed by http
 allow-insecure-unlock = false
 
-# EVMTimeout is the global timeout for eth_call. Default: 5s.
+# EVMTimeout is the global timeout for eth_call and eth_estimateGas. Default: 5s.
 evm-timeout = "5s"
 
 # TxFeeCap is the global tx-fee cap for send transaction. Default: 1eth.

@@ -1,7 +1,7 @@
 {
   "app_name": "evmd",
-  "app_version": "166546c",
-  "genesis_time": "2026-06-06T00:00:00Z",
+  "app_version": "30e02aa",
+  "genesis_time": "1996-03-15T12:00:00Z",
   "chain_id": "nura_1020-1",
   "initial_height": 1,
   "app_hash": null,
@@ -18,7 +18,7 @@
       "accounts": [
         {
           "@type": "/cosmos.auth.v1beta1.BaseAccount",
-          "address": "nura1ftqdjvqyy26q3w32harejhy8eue8vdcjfp6r77",
+          "address": "nura19medtgy4l40v66rdn8kne50el7glcvt8fazx5w",
           "pub_key": null,
           "account_number": "0",
           "sequence": "0"
@@ -35,7 +35,7 @@
       },
       "balances": [
         {
-          "address": "nura1ftqdjvqyy26q3w32harejhy8eue8vdcjfp6r77",
+          "address": "nura19medtgy4l40v66rdn8kne50el7glcvt8fazx5w",
           "coins": [
             {
               "denom": "anura",
@@ -133,7 +133,11 @@
             "access_control_list": []
           }
         },
-        "active_static_precompiles": [],
+        "active_static_precompiles": [
+          "0x0000000000000000000000000000000000000800",
+          "0x0000000000000000000000000000000000000801",
+          "0x0000000000000000000000000000000000000805"
+        ],
         "history_serve_window": "8192",
         "extended_denom_options": {
           "extended_denom": "stake"
@@ -150,8 +154,8 @@
         "base_fee_change_denominator": 8,
         "elasticity_multiplier": 2,
         "enable_height": "0",
-        "base_fee": "1000000000.000000000000000000",
-        "min_gas_price": "1000000000.000000000000000000",
+        "base_fee": "45000000000000.000000000000000000",
+        "min_gas_price": "45000000000000.000000000000000000",
         "min_gas_multiplier": "0.500000000000000000"
       },
       "block_gas": "0"
@@ -164,7 +168,7 @@
               {
                 "@type": "/cosmos.staking.v1beta1.MsgCreateValidator",
                 "description": {
-                  "moniker": "validator-1",
+                  "moniker": "lightbringer",
                   "identity": "",
                   "website": "",
                   "security_contact": "",
@@ -177,18 +181,18 @@
                 },
                 "min_self_delegation": "1",
                 "delegator_address": "",
-                "validator_address": "nuravaloper1ftqdjvqyy26q3w32harejhy8eue8vdcjsengjg",
+                "validator_address": "nuravaloper19medtgy4l40v66rdn8kne50el7glcvt8s9tdcc",
                 "pubkey": {
                   "@type": "/cosmos.crypto.ed25519.PubKey",
-                  "key": "QZwv231zfmGgdsSiqHEcKvbnxQKHhIuaALkxTveJcpE="
+                  "key": "nyKvRqC0r060SHrg2PWd2dL0jHAIePOeyd2btK9X+tQ="
                 },
                 "value": {
                   "denom": "anura",
-                  "amount": "1000000000000000000000000"
+                  "amount": "5000000000000000000000000"
                 }
               }
             ],
-            "memo": "c0d9193c5af6cbd5d2828a46bb7a518bef8c2238@43.225.90.112:26656",
+            "memo": "18455f10edd7fd19ed8dbf2fa483a9666d3838c9@43.225.90.112:26656",
             "timeout_height": "0",
             "unordered": false,
             "timeout_timestamp": null,
@@ -200,7 +204,7 @@
               {
                 "public_key": {
                   "@type": "/cosmos.evm.crypto.v1.ethsecp256k1.PubKey",
-                  "key": "AzHfKa3oF2/KHfzbKIPogsDpA7R+Gw9Uucahkgke2C5H"
+                  "key": "AppYS9wVYAggn7OX3EAsGD43HwJ9pHh3Cgbw6hGZiymW"
                 },
                 "mode_info": {
                   "single": {
@@ -214,7 +218,7 @@
               "amount": [
                 {
                   "denom": "anura",
-                  "amount": "200000000000000"
+                  "amount": "9000000000000000000"
                 }
               ],
               "gas_limit": "200000",
@@ -224,7 +228,7 @@
             "tip": null
           },
           "signatures": [
-            "uOsnaXLlMuJuDH6ANLA9ve8Er5CpmzA/bsWJJG2gFt4LESb3S9abHJ5vIFhu7Z2dJ97KNG9uJRNE/YIKTfQ4AAA="
+            "k95KRf51dd7Vk74nbR5vdZKBnH4wjqhtHVZEfXoEQDVenHtT5bPnzKPvOCg7+QdwE+mEAhhXyUQLGHMET/z4LwA="
           ]
         }
       ]
@@ -241,7 +245,7 @@
         "min_deposit": [
           {
             "denom": "anura",
-            "amount": "100000000000000000000000"
+            "amount": "10000000000000000000000000"
           }
         ],
         "max_deposit_period": "172800s",
@@ -257,13 +261,13 @@
         "expedited_min_deposit": [
           {
             "denom": "anura",
-            "amount": "500000000000000000000000"
+            "amount": "20000000000000000000000000"
           }
         ],
         "burn_vote_quorum": false,
         "burn_proposal_deposit_prevote": false,
         "burn_vote_veto": true,
-        "min_deposit_ratio": "0.010000000000000000"
+        "min_deposit_ratio": "0.100000000000000000"
       },
       "constitution": ""
     },
@@ -326,7 +330,7 @@
     },
     "slashing": {
       "params": {
-        "signed_blocks_window": "100",
+        "signed_blocks_window": "7200",
         "min_signed_per_window": "0.500000000000000000",
         "downtime_jail_duration": "600s",
         "slash_fraction_double_sign": "0.050000000000000000",
