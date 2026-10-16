@@ -120,6 +120,11 @@ nura::set_toml "$CONFIG_TOML" "p2p" "external_address" "\"$EXTERNAL_ADDRESS\""
 nura::set_toml "$CONFIG_TOML" "p2p" "addr_book_strict" "true"
 nura::set_toml "$CONFIG_TOML" "p2p" "pex" "true"
 
+# `evmd start` always enables the app-side EVM mempool (it forces
+# mempool.max-txs=0 over app.toml), and refuses to start unless CometBFT hands
+# the mempool to the app. `evmd init` writes "flood".
+nura::set_toml "$CONFIG_TOML" "mempool" "type" "\"app\""
+
 # Keeps real block time aligned with the blocks_per_year baked into genesis.
 nura::set_toml "$CONFIG_TOML" "consensus" "timeout_commit" "\"${SECONDS_PER_BLOCK}s\""
 
