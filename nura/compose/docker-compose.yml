@@ -1,0 +1,39 @@
+# A Nura node for Dokploy (Compose service, Compose Path
+# ./nura/compose/docker-compose.yml) or plain `docker compose up -d` from this
+# directory. See nura/README.md.
+
+services:
+  evmd:
+    build:
+      context: ../..
+      dockerfile: nura/compose/Dockerfile
+    restart: unless-stopped
+    environment:
+      MONIKER: ${MONIKER:?}
+      # At least the coordinator, e.g. 18455f10edd7fd19ed8dbf2fa483a9666d3838c9@43.225.90.112:26656
+      PERSISTENT_PEERS: ${PERSISTENT_PEERS:?}
+      # This server's public IP or hostname, with :26656.
+      EXTERNAL_ADDRESS: ${EXTERNAL_ADDRESS:?}
+      # SHA256 of the final genesis.json, as published by the coordinator.
+      GENESIS_SHA256: ${GENESIS_SHA256:?}
+      # Whole tokens 08_create_validator.sh bonds. Must not exceed this account's balance.
+      GENTX_SELF_DELEGATION: ${GENTX_SELF_DELEGATION:?}
+    # P2P is raw TCP and cannot go through Traefik's HTTP routing.
+    ports:
+      - "26656:26656"
+    volumes:
+      - evmd-home:/home/evmd/.evmd
+    stop_grace_period: 2m
+    ulimits:
+      nofile:
+        soft: 65535
+        hard: 65535
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "-o", "/dev/null", "http://127.0.0.1:26657/status"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 2m
+
+volumes:
+  evmd-home:

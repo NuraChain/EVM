@@ -147,6 +147,30 @@ Until there are four validators, losing any one of them halts the chain. With eq
 
    It refuses to run while the node is still syncing or when this account is already a validator. It bonds `GENTX_SELF_DELEGATION` with the same commission as the genesis validator, and asks for the keyring passphrase and a confirmation before broadcasting.
 
+## Running a validator with Docker (Dokploy)
+
+`compose/` runs the same node in a container, for hosts managed by Dokploy or plain Docker Compose. The image builds `evmd` from this repository, bakes in `config/genesis.json`, and on every start runs `05_configure_node.sh` against a persistent volume, so the node is configured exactly like a systemd host. Use it on a server that does not already run `evmd.service`.
+
+1. In Dokploy, create a **Compose** service of type Docker Compose from this repository and set the Compose Path to `./nura/compose/docker-compose.yml`. Turn **Autodeploy** off: a push to the branch would otherwise rebuild and restart the validator.
+2. In the service's Environment tab, set the variables `docker-compose.yml` asks for: `MONIKER`, `PERSISTENT_PEERS` (the coordinator's `nodeid@host:26656`), `EXTERNAL_ADDRESS` (this server's public `host:26656`), `GENESIS_SHA256` (the coordinator's checksum; the node refuses to start on a mismatch), and `GENTX_SELF_DELEGATION`.
+3. Open `26656/tcp` in this server's firewall, then deploy. The first build compiles `evmd` and needs about 4 GB of RAM; add swap on smaller servers.
+4. Open a shell in the container (the service's terminal in Dokploy, or `docker exec -it <container> bash`). `whoami` must print `evmd`; as any other user the key lands outside the volume and is lost on the next deploy. Create the validator key, or import an existing private key:
+
+   ```bash
+   evmd keys add validator --algo eth_secp256k1 --keyring-backend file --home "$NODE_HOME"
+   read -rsp "Private key: " PK && echo && evmd keys unsafe-import-eth-key validator "$PK" --keyring-backend file --home "$NODE_HOME"; unset PK
+   ```
+
+   Never put a key in a Dokploy environment variable; Dokploy stores and displays them.
+5. Fund the printed address if genesis did not, with at least `GENTX_SELF_DELEGATION` plus fees.
+6. Wait until `evmd status --home "$NODE_HOME" | jq .sync_info.catching_up` prints `false`, then bond the validator from the same terminal:
+
+   ```bash
+   /opt/nura/08_create_validator.sh
+   ```
+
+The node home, including `priv_validator_key.json` and the keyring, lives in the service's `evmd-home` volume. Back both up offline. Deleting the Dokploy service or its volume destroys the consensus key, and a second node started from a copy of the volume double-signs.
+
 ## Relaunching from scratch
 
 `01_init_node.sh` reuses whatever `NODE_HOME` already holds, so an old chain must be removed first. On every host, back up `NODE_HOME`, then:

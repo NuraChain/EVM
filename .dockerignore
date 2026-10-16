@@ -1,0 +1,14 @@
+# Node homes and key material must never enter a build context: `COPY . .` would
+# bake them into an image layer. On the VPS the checkout holds NODE_HOME itself.
+.evmd
+**/.evmd
+**/nura.env
+**/.env
+*.mnemonic
+**/priv_validator_key.json
+**/node_key.json
+**/keyring-file
+
+build
+**/node_modules
+.testnets
