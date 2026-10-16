@@ -18,6 +18,12 @@ services:
       GENESIS_SHA256: ${GENESIS_SHA256:?}
       # Whole tokens 08_create_validator.sh bonds. Must not exceed this account's balance.
       GENTX_SELF_DELEGATION: ${GENTX_SELF_DELEGATION:?}
+      # Optional. `base64 -w0` of an existing node's config/priv_validator_key.json
+      # and config/node_key.json, written into the node home on every start.
+      # Remove them once the node runs: the files stay in the volume, and a key
+      # left here would be written onto an empty volume after it is lost.
+      PRIV_VALIDATOR_KEY_B64: ${PRIV_VALIDATOR_KEY_B64:-}
+      NODE_KEY_B64: ${NODE_KEY_B64:-}
     # P2P is raw TCP and cannot go through Traefik's HTTP routing.
     ports:
       - "26656:26656"

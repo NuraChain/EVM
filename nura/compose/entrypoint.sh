@@ -27,6 +27,35 @@ two nodes signing with the same key are slashed and tombstoned permanently.
 EOF
 fi
 
+# Writes a CometBFT key file from a base64 environment variable, so an existing
+# node's keys can move into the container without copying files onto the host.
+# Runs after init: CometBFT refuses to load a validator key without
+# data/priv_validator_state.json, which init creates.
+install_key_from_env() {
+	local var="$1" file="$2" tmp
+	[[ -n "${!var:-}" ]] || return 0
+	tmp="$file.from-env.$$"
+	if ! (umask 077 && printf '%s' "${!var}" | tr -d '[:space:]' | base64 -d > "$tmp" 2>/dev/null); then
+		rm -f "$tmp"
+		echo "error: $var is not valid base64. Encode the file with: base64 -w0 <file>" >&2
+		exit 1
+	fi
+	if ! jq -e '.priv_key.value | type == "string"' "$tmp" >/dev/null 2>&1; then
+		rm -f "$tmp"
+		echo "error: $var does not decode to a CometBFT key file." >&2
+		exit 1
+	fi
+	mv "$tmp" "$file"
+	echo "Installed $file from $var"
+}
+
+install_key_from_env PRIV_VALIDATOR_KEY_B64 "$NODE_HOME/config/priv_validator_key.json"
+install_key_from_env NODE_KEY_B64 "$NODE_HOME/config/node_key.json"
+
+# Public values only, so the operator can check the keys in the deploy log.
+echo "Consensus public key: $(jq -r '.pub_key.value' "$NODE_HOME/config/priv_validator_key.json")"
+echo "Node ID: $(evmd comet show-node-id --home "$NODE_HOME")"
+
 evmd config set client chain-id "$CHAIN_ID" --home "$NODE_HOME"
 evmd config set client keyring-backend "$KEYRING_BACKEND" --home "$NODE_HOME"
 

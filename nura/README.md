@@ -161,7 +161,7 @@ Until there are four validators, losing any one of them halts the chain. With eq
    read -rsp "Private key: " PK && echo && evmd keys unsafe-import-eth-key validator "$PK" --keyring-backend file --home "$NODE_HOME"; unset PK
    ```
 
-   Never put a key in a Dokploy environment variable; Dokploy stores and displays them.
+   Never put this account key in a Dokploy environment variable; Dokploy stores and displays them.
 5. Fund the printed address if genesis did not, with at least `GENTX_SELF_DELEGATION` plus fees.
 6. Wait until `evmd status --home "$NODE_HOME" | jq .sync_info.catching_up` prints `false`, then bond the validator from the same terminal:
 
@@ -170,6 +170,8 @@ Until there are four validators, losing any one of them halts the chain. With eq
    ```
 
 The node home, including `priv_validator_key.json` and the keyring, lives in the service's `evmd-home` volume. Back both up offline. Deleting the Dokploy service or its volume destroys the consensus key, and a second node started from a copy of the volume double-signs.
+
+To run an existing node's keys, set `PRIV_VALIDATOR_KEY_B64` and `NODE_KEY_B64` to the output of `base64 -w0` on its `config/priv_validator_key.json` and `config/node_key.json`. The deploy log prints the consensus public key and node ID so you can check them. The keys carry no chain data. On an empty volume, a validator with enough voting power builds a new chain from height 1 and double-signs every height the real chain already has, so also copy the old node's `data/` into the volume unless that history is gone. Remove both variables once the node runs: Dokploy stores and displays them, and the files stay in the volume.
 
 ## Relaunching from scratch
 
