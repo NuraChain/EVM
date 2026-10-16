@@ -24,6 +24,11 @@ services:
       # left here would be written onto an empty volume after it is lost.
       PRIV_VALIDATOR_KEY_B64: ${PRIV_VALIDATOR_KEY_B64:-}
       NODE_KEY_B64: ${NODE_KEY_B64:-}
+      # Traefik reaches JSON-RPC over the Docker network, so it must listen on
+      # the container's interfaces, not loopback. Never publish these ports on
+      # the host: that would expose RPC without Traefik's TLS.
+      JSONRPC_ADDRESS: ${JSONRPC_ADDRESS:-0.0.0.0:8545}
+      JSONRPC_WS_ADDRESS: ${JSONRPC_WS_ADDRESS:-0.0.0.0:8546}
     # P2P is raw TCP and cannot go through Traefik's HTTP routing.
     ports:
       - "26656:26656"
