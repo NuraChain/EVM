@@ -29,6 +29,9 @@ services:
       # the host: that would expose RPC without Traefik's TLS.
       JSONRPC_ADDRESS: ${JSONRPC_ADDRESS:-0.0.0.0:8545}
       JSONRPC_WS_ADDRESS: ${JSONRPC_WS_ADDRESS:-0.0.0.0:8546}
+      # Hostnames whose browser pages may open the WebSocket, comma-separated,
+      # or * for any. HTTP JSON-RPC already accepts every origin.
+      JSONRPC_WS_ORIGINS: ${JSONRPC_WS_ORIGINS:-*}
     # P2P is raw TCP and cannot go through Traefik's HTTP routing.
     ports:
       - "26656:26656"

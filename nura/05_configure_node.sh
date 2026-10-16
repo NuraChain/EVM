@@ -12,6 +12,7 @@ nura::load_env "$SCRIPT_DIR"
 : "${JSONRPC_ADDRESS:=127.0.0.1:8545}"
 : "${JSONRPC_WS_ADDRESS:=127.0.0.1:8546}"
 : "${JSONRPC_NAMESPACES:=eth,net,web3}"
+: "${JSONRPC_WS_ORIGINS:=127.0.0.1,localhost}"
 : "${JSONRPC_ENABLE_INDEXER:=true}"
 : "${PERSISTENT_PEERS:=}"
 : "${EXTERNAL_ADDRESS:=}"
@@ -101,6 +102,21 @@ nura::set_toml "$APP_TOML" "json-rpc" "api" "\"$JSONRPC_NAMESPACES\""
 nura::set_toml "$APP_TOML" "json-rpc" "enable-indexer" "$JSONRPC_ENABLE_INDEXER"
 nura::set_toml "$APP_TOML" "json-rpc" "allow-insecure-unlock" "false"
 
+# The WebSocket server compares only the Origin header's hostname, so a URL here
+# would silently never match, and an empty list rejects every client, including
+# ones that send no Origin header.
+WS_ORIGINS_TOML=""
+IFS=',' read -ra ws_origins <<< "$JSONRPC_WS_ORIGINS"
+for origin in "${ws_origins[@]}"; do
+	origin="${origin//[[:space:]]/}"
+	[[ -n "$origin" ]] || continue
+	[[ "$origin" =~ ^(\*|[A-Za-z0-9.-]+)$ ]] ||
+		nura::die "JSONRPC_WS_ORIGINS entry '$origin' must be a bare hostname or *, not a URL."
+	WS_ORIGINS_TOML+="${WS_ORIGINS_TOML:+, }\"$origin\""
+done
+[[ -n "$WS_ORIGINS_TOML" ]] || nura::die "JSONRPC_WS_ORIGINS must list at least one hostname, or *."
+nura::set_toml "$APP_TOML" "json-rpc" "ws-origins" "[$WS_ORIGINS_TOML]"
+
 nura::set_toml "$APP_TOML" "" "minimum-gas-prices" "\"$MIN_GAS_PRICES\""
 nura::set_toml "$APP_TOML" "" "pruning" "\"$PRUNING\""
 
@@ -136,6 +152,7 @@ echo
 echo "Configured node at $NODE_HOME"
 echo "  EIP-155 chain ID   $EVM_CHAIN_ID"
 echo "  JSON-RPC           $JSONRPC_ENABLE on $JSONRPC_ADDRESS (namespaces: $JSONRPC_NAMESPACES)"
+echo "  WebSocket origins  $JSONRPC_WS_ORIGINS"
 echo "  minimum gas price  $MIN_GAS_PRICES"
 echo "  block time target  ${SECONDS_PER_BLOCK}s"
 
