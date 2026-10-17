@@ -32,6 +32,14 @@ services:
       # Hostnames whose browser pages may open the WebSocket, comma-separated,
       # or * for any. HTTP JSON-RPC already accepts every origin.
       JSONRPC_WS_ORIGINS: ${JSONRPC_WS_ORIGINS:-*}
+      # Cosmos REST (1317) and CometBFT RPC (26657), which explorers read
+      # staking and governance from. Same rule as JSON-RPC: reach them through
+      # Traefik domains, never published host ports. CORS lets browser-side
+      # explorers such as Ping.pub call them.
+      API_ADDRESS: ${API_ADDRESS:-tcp://0.0.0.0:1317}
+      API_ENABLE_UNSAFE_CORS: ${API_ENABLE_UNSAFE_CORS:-true}
+      COMET_RPC_ADDRESS: ${COMET_RPC_ADDRESS:-tcp://0.0.0.0:26657}
+      COMET_RPC_CORS_ORIGINS: ${COMET_RPC_CORS_ORIGINS:-*}
     # P2P is raw TCP and cannot go through Traefik's HTTP routing.
     ports:
       - "26656:26656"

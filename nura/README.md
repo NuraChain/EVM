@@ -169,6 +169,8 @@ Until there are four validators, losing any one of them halts the chain. With eq
    /opt/nura/08_create_validator.sh
    ```
 
+For an explorer, add Dokploy Domains on the `evmd` service, one subdomain each, with HTTPS: e.g. `api.<domain>` → container port `1317` (Cosmos REST: staking, governance, bank) and `rpc.<domain>` → `26657` (CometBFT RPC). Point the explorer at the bare URLs. Compose binds both to the container's interfaces with CORS open; never add them to `ports:`, which would bypass Traefik's TLS. Check with `curl https://api.<domain>/cosmos/staking/v1beta1/validators` and `curl https://rpc.<domain>/status`.
+
 The node home, including `priv_validator_key.json` and the keyring, lives in the service's `evmd-home` volume. Back both up offline. Deleting the Dokploy service or its volume destroys the consensus key, and a second node started from a copy of the volume double-signs.
 
 To run an existing node's keys, set `PRIV_VALIDATOR_KEY_B64` and `NODE_KEY_B64` to the output of `base64 -w0` on its `config/priv_validator_key.json` and `config/node_key.json`. The deploy log prints the consensus public key and node ID so you can check them. The keys carry no chain data. On an empty volume, a validator with enough voting power builds a new chain from height 1 and double-signs every height the real chain already has, so also copy the old node's `data/` into the volume unless that history is gone. Remove both variables once the node runs: Dokploy stores and displays them, and the files stay in the volume.
@@ -204,7 +206,7 @@ Two consequences worth deciding on deliberately:
 ## Production notes
 
 - Use at least four validators on separate hosts. One validator is not production-grade.
-- CometBFT RPC, REST, gRPC, and JSON-RPC are bound to loopback by `05_configure_node.sh`; only P2P `26656` needs to be reachable. Restrict the rest at your host firewall as well, and serve public RPC from a separate non-validator node behind an authenticated TLS reverse proxy.
+- On systemd hosts, CometBFT RPC, REST, gRPC, and JSON-RPC are bound to loopback by `05_configure_node.sh`; only P2P `26656` needs to be reachable. The compose setup binds RPC, REST, and JSON-RPC to the container's interfaces for Traefik only. Restrict the rest at your host firewall as well, and serve public RPC from a separate non-validator node behind an authenticated TLS reverse proxy.
 - Never use the `test` keyring backend; the scripts reject it.
 - Never expose the `personal`, `debug`, or `miner` JSON-RPC namespaces; `05_configure_node.sh` rejects them.
 - **Never run two nodes from a copy of the same `NODE_HOME`.** Duplicated `priv_validator_key.json` means double-signing, which is slashed and tombstoned permanently. Never roll back `priv_validator_state.json`.
@@ -292,4 +294,4 @@ sudo ./08_create_validator.sh
 
 `08_create_validator.sh` تا وقتی node هنوز sync نشده یا این حساب از قبل validator است اجرا نمی‌شود. تا وقتی کمتر از ۴ validator دارید، خاموش شدن هر کدام شبکه را متوقف می‌کند؛ پس validatorهای ۲ تا ۴ را پشت سر هم و سریع بالا بیاورید.
 
-فقط پورت `26656` برای P2P باز است. پورت‌های RPC و API روی loopback هستند و نباید مستقیماً عمومی شوند. کلید `priv_validator_key.json` را هرگز روی دو سرور همزمان اجرا نکنید؛ double-sign باعث slash و tombstone دائمی می‌شود.
+فقط پورت `26656` برای P2P باز است. روی systemd پورت‌های RPC و API روی loopback هستند و نباید مستقیماً عمومی شوند. در Docker Compose پورت‌های `1317` (REST) و `26657` (RPC) برای explorer فقط از طریق Domainهای Dokploy (Traefik با HTTPS) در دسترس‌اند، نه با `ports:`. کلید `priv_validator_key.json` را هرگز روی دو سرور همزمان اجرا نکنید؛ double-sign باعث slash و tombstone دائمی می‌شود.

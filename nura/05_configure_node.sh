@@ -14,6 +14,10 @@ nura::load_env "$SCRIPT_DIR"
 : "${JSONRPC_NAMESPACES:=eth,net,web3}"
 : "${JSONRPC_WS_ORIGINS:=127.0.0.1,localhost}"
 : "${JSONRPC_ENABLE_INDEXER:=true}"
+: "${API_ADDRESS:=tcp://127.0.0.1:1317}"
+: "${API_ENABLE_UNSAFE_CORS:=false}"
+: "${COMET_RPC_ADDRESS:=tcp://127.0.0.1:26657}"
+: "${COMET_RPC_CORS_ORIGINS:=}"
 : "${PERSISTENT_PEERS:=}"
 : "${EXTERNAL_ADDRESS:=}"
 : "${PRUNING:=default}"
@@ -47,6 +51,14 @@ for namespace in personal debug miner; do
 		nura::die "JSONRPC_NAMESPACES must not contain '$namespace'."
 	fi
 done
+
+# Without the scheme CometBFT refuses to start with an error that never names
+# the setting.
+for address in "$API_ADDRESS" "$COMET_RPC_ADDRESS"; do
+	[[ "$address" == tcp://* ]] || nura::die "'$address' must start with tcp://, e.g. tcp://0.0.0.0:1317."
+done
+[[ "$API_ENABLE_UNSAFE_CORS" == "true" || "$API_ENABLE_UNSAFE_CORS" == "false" ]] ||
+	nura::die "API_ENABLE_UNSAFE_CORS must be true or false."
 
 if [[ -n "$GENESIS_SHA256" ]]; then
 	ACTUAL="$(nura::sha256 "$GENESIS")"
@@ -120,15 +132,30 @@ nura::set_toml "$APP_TOML" "json-rpc" "ws-origins" "[$WS_ORIGINS_TOML]"
 nura::set_toml "$APP_TOML" "" "minimum-gas-prices" "\"$MIN_GAS_PRICES\""
 nura::set_toml "$APP_TOML" "" "pruning" "\"$PRUNING\""
 
-# Keep the query APIs on loopback; put a TLS reverse proxy in front if needed.
+# Loopback unless API_ADDRESS says otherwise; put a TLS reverse proxy in front
+# of anything wider. Browser explorers such as Ping.pub call REST directly, so
+# they also need CORS.
 nura::set_toml "$APP_TOML" "api" "enable" "true"
-nura::set_toml "$APP_TOML" "api" "address" "\"tcp://127.0.0.1:1317\""
+nura::set_toml "$APP_TOML" "api" "address" "\"$API_ADDRESS\""
+nura::set_toml "$APP_TOML" "api" "enabled-unsafe-cors" "$API_ENABLE_UNSAFE_CORS"
 nura::set_toml "$APP_TOML" "grpc" "enable" "true"
 nura::set_toml "$APP_TOML" "grpc" "address" "\"127.0.0.1:9090\""
 
 echo "Configuring $CONFIG_TOML"
 
-nura::set_toml "$CONFIG_TOML" "rpc" "laddr" "\"tcp://127.0.0.1:26657\""
+# Origins (https://host) or *, comma-separated. Empty sends no CORS headers.
+COMET_CORS_TOML=""
+IFS=',' read -ra comet_origins <<< "$COMET_RPC_CORS_ORIGINS"
+for origin in "${comet_origins[@]}"; do
+	origin="${origin//[[:space:]]/}"
+	[[ -n "$origin" ]] || continue
+	[[ "$origin" =~ ^(\*|https?://[A-Za-z0-9.:*-]+)$ ]] ||
+		nura::die "COMET_RPC_CORS_ORIGINS entry '$origin' must be * or an origin such as https://explorer.example."
+	COMET_CORS_TOML+="${COMET_CORS_TOML:+, }\"$origin\""
+done
+
+nura::set_toml "$CONFIG_TOML" "rpc" "laddr" "\"$COMET_RPC_ADDRESS\""
+nura::set_toml "$CONFIG_TOML" "rpc" "cors_allowed_origins" "[$COMET_CORS_TOML]"
 nura::set_toml "$CONFIG_TOML" "rpc" "unsafe" "false"
 
 nura::set_toml "$CONFIG_TOML" "p2p" "persistent_peers" "\"$PERSISTENT_PEERS\""
@@ -153,6 +180,8 @@ echo "Configured node at $NODE_HOME"
 echo "  EIP-155 chain ID   $EVM_CHAIN_ID"
 echo "  JSON-RPC           $JSONRPC_ENABLE on $JSONRPC_ADDRESS (namespaces: $JSONRPC_NAMESPACES)"
 echo "  WebSocket origins  $JSONRPC_WS_ORIGINS"
+echo "  REST API           $API_ADDRESS (CORS: $API_ENABLE_UNSAFE_CORS)"
+echo "  CometBFT RPC       $COMET_RPC_ADDRESS (CORS: ${COMET_RPC_CORS_ORIGINS:-none})"
 echo "  minimum gas price  $MIN_GAS_PRICES"
 echo "  block time target  ${SECONDS_PER_BLOCK}s"
 
